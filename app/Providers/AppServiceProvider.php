@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use App\Http\Responses\LoginResponse;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -11,22 +13,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Bind custom login response for role-based redirects
+        $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        // Register a helper to generate routes with subdomain parameter if needed
-        if (!function_exists('adminRoute')) {
-            function adminRoute($name, $parameters = []) {
-                if (app()->has('company') && !isset($parameters['subdomain'])) {
-                    $parameters['subdomain'] = app('company')->slug;
-                }
-                return route($name, $parameters);
-            }
-        }
+        // Route model bindings are configured in routes/web.php
+        // for tenant-scoped resources
     }
 }

@@ -76,13 +76,13 @@
                                     <td>{{ $product->brand->name ?? 'No Brand' }}</td>
                                     <td>{{ $product->featured ? 'Yes' : 'No' }}</td>
                                     <td>
-                                        @if($product->quantity > 0)
+                                        @if($product->stock_quantity > 0)
                                             <span class="badge bg-success">In Stock</span>
                                         @else
                                             <span class="badge bg-danger">Out of Stock</span>
                                         @endif
                                     </td>
-                                    <td>{{ $product->quantity }}</td>
+                                    <td>{{ $product->stock_quantity }}</td>
                                     <td>
                                         <div class="list-icon-function">
                                             <a href="#" target="_blank">

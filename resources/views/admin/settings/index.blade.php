@@ -48,6 +48,7 @@
                             'general' => ['icon' => 'fas fa-sliders-h', 'label' => 'General'],
                             'appearance' => ['icon' => 'fas fa-palette', 'label' => 'Appearance'],
                             'payments' => ['icon' => 'fas fa-credit-card', 'label' => 'Payments'],
+                            'billing_subscription' => ['icon' => 'fas fa-file-invoice-dollar', 'label' => 'Billing & Subscription'],
                             'about' => ['icon' => 'fas fa-info-circle', 'label' => 'About'],
                             'sms' => ['icon' => 'fas fa-sms', 'label' => 'SMS'],
                             'whatsapp' => ['icon' => 'fas fa-comments', 'label' => 'WhatsApp'],
@@ -83,6 +84,22 @@
             <!-- PAYMENTS SETTINGS -->
             <div x-show="activeTab === 'payments'" x-transition:enter="transition ease-out duration-300" x-transition:leave="transition ease-in duration-200">
                 @include('admin.settings.partials.payments', ['paymentSetting' => $paymentSetting])
+            </div>
+
+
+            <!-- BILLING & SUBSCRIPTION SETTINGS -->
+            <div x-show="activeTab === 'billing_subscription'" x-transition:enter="transition ease-out duration-300" x-transition:leave="transition ease-in duration-200">
+                @include('admin.settings.partials.billing-subscription', [
+                    'isInTrial' => $isInTrial,
+                    'remainingTrialDays' => $remainingTrialDays,
+                    'shouldShowPaymentDue' => $shouldShowPaymentDue,
+                    'company' => $company,
+                    'currentPlan' => $currentPlan,
+                    'daysUntilExpiry' => $daysUntilExpiry,
+                    'isPaymentAvailable' => $isPaymentAvailable,
+                    'plans' => $plans,
+                    'paymentHistory' => $paymentHistory
+                ])
             </div>
 
             <!-- ABOUT SETTINGS -->

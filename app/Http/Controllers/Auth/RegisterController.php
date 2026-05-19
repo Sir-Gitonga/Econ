@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Company;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -68,13 +69,21 @@ class RegisterController extends Controller
             return back()->withErrors(['domain' => 'Invalid company domain.']);
         }
 
+        $assignedRole = $isMainDomain ? 'admin' : 'user';
+        $roleId = null;
+
+        if ($company) {
+            $roleId = Role::where('company_id', $company->id)->where('name', $assignedRole)->value('id');
+        }
+
         $user = User::create([
             'company_id' => $company?->id,
             'name' => $request->name,
             'mobile' => $request->mobile,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $isMainDomain ? 'admin' : 'user', // admin for main domain, user for subdomains
+            'role_id' => $roleId,
+            'role' => $assignedRole,
         ]);
 
         Auth::login($user);

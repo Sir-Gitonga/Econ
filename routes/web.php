@@ -9,6 +9,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanySettingsController;
+use App\Http\Controllers\TwoFactorAuthController;
 use App\Http\Middleware\AuthAdmin;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Facades\Auth;
@@ -18,16 +19,14 @@ use Illuminate\Support\Facades\Route;
 
 Auth::routes();
 
-/**
- * TENANT ROUTES (Subdomain-based multi-tenancy)
- *
- * Routes accessible only on tenant subdomains: {slug}.localhost
- * - Middleware resolves company by slug
- * - All queries auto-scoped by CompanyScope
- * - Prevents cross-tenant access
- */
+// Two-Factor Authentication Routes (accessible during login process)
+Route::get('/two-factor/verify-login', [TwoFactorAuthController::class, 'showLoginVerify'])->name('two-factor.login-verify');
+Route::post('/two-factor/verify-login', [TwoFactorAuthController::class, 'verifyLogin'])->name('two-factor.verify-login');
+Route::post('/two-factor/resend-code', [TwoFactorAuthController::class, 'resendCode'])->name('two-factor.resend-code');
+
 Route::domain('{subdomain}.localhost')
     ->middleware(\App\Http\Middleware\IdentifyCompanyBySubdomain::class)
+    ->scopeBindings()
     ->group(function () {
         // Tenant home/storefront - uses existing views
         Route::get('/', [HomeController::class, 'index'])->name('tenant.index');
@@ -38,7 +37,13 @@ Route::domain('{subdomain}.localhost')
         // POS route must be accessible by admin and cashier
         Route::middleware(['auth', \App\Http\Middleware\Role::class . ':admin|cashier'])->prefix('admin')->group(function() {
             Route::get('/pos', [AdminController::class, 'pos'])->name('admin.pos');
-            Route::post('/pos/checkout', [AdminController::class, 'posCheckout'])->name('admin.pos.checkout');
+            Route::post('/pos/checkout', [\App\Http\Controllers\PosController::class, 'checkout'])->name('admin.pos.checkout');
+        });
+
+        // Separate route for cashier dashboard; does NOT require admin role
+        Route::middleware(['auth', \App\Http\Middleware\Role::class . ':cashier'])->prefix('admin')->group(function() {
+            Route::get('/cashier/dashboard', [\App\Http\Controllers\Cashier\CashierController::class, 'index'])
+                ->name('admin.cashier.dashboard');
         });
 
         Route::middleware(['auth', \App\Http\Middleware\Role::class . ':admin'])->prefix('admin')->group(function() {
@@ -52,6 +57,15 @@ Route::domain('{subdomain}.localhost')
             Route::post('/settings/payment', [CompanySettingsController::class, 'updatePayment'])->name('admin.settings.update.payment');
             Route::post('/settings/business', [CompanySettingsController::class, 'updateBusiness'])->name('admin.settings.update.business');
             Route::post('/settings/communication', [CompanySettingsController::class, 'updateCommunication'])->name('admin.settings.update.communication');
+
+            // Billing & Subscription Settings
+            Route::get('/settings/billing', [\App\Http\Controllers\Admin\SettingsController::class, 'billing'])->name('admin.settings.billing');
+            Route::post('/settings/select-plan', [\App\Http\Controllers\Admin\SettingsController::class, 'selectPlan'])->name('admin.settings.select-plan');
+            Route::get('/settings/payment/{payment}', [\App\Http\Controllers\Admin\SettingsController::class, 'payment'])->name('admin.settings.payment');
+            Route::post('/settings/payment/{payment}/process', [\App\Http\Controllers\Admin\SettingsController::class, 'processPayment'])->name('admin.settings.process-payment');
+            Route::get('/settings/invoice/{payment}', [\App\Http\Controllers\Admin\SettingsController::class, 'invoice'])->name('admin.settings.invoice');
+            Route::get('/settings/invoice/{payment}/download', [\App\Http\Controllers\Admin\SettingsController::class, 'downloadInvoice'])->name('admin.settings.download-invoice');
+            Route::post('/settings/mark-payment-notified', [\App\Http\Controllers\Admin\SettingsController::class, 'markPaymentNotificationSeen'])->name('admin.settings.mark-payment-notified');
 
             // SMS & WhatsApp settings (dynamic provider/gateway)
             Route::get('/settings/sms', [\App\Http\Controllers\Admin\Settings\SmsSettingsController::class, 'index'])->name('admin.settings.sms');
@@ -97,6 +111,20 @@ Route::domain('{subdomain}.localhost')
             Route::get('/order/{order_id}/details',[AdminController::class, 'order_details'])->name('admin.order.details');
             Route::put('/order/update_status',[AdminController::class, 'update_order_status'])->name('admin.order.status.update');
 
+            // Refunds & Returns
+            Route::post('/orders/{order}/refund', [\App\Http\Controllers\Admin\RefundController::class, 'refundOrder'])->name('admin.orders.refund');
+            Route::post('/orders/{order}/partial-refund', [\App\Http\Controllers\Admin\RefundController::class, 'partialRefund'])->name('admin.orders.partial_refund');
+
+            // Inventory Management
+            Route::get('/inventory', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'index'])->name('admin.inventory.index');
+            Route::get('/inventory/product/{product}', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'getProduct'])->name('admin.inventory.product');
+            Route::post('/inventory/adjust', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'adjust'])->name('admin.inventory.adjust');
+            Route::post('/inventory/bulk-adjust', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'bulkAdjust'])->name('admin.inventory.bulk_adjust');
+            Route::post('/inventory/set-threshold', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'setThreshold'])->name('admin.inventory.set_threshold');
+            Route::get('/inventory/history', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'history'])->name('admin.inventory.history');
+            Route::get('/inventory/product/{product}/movements', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'movementHistory'])->name('admin.inventory.movements');
+            Route::get('/inventory/export', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'exportMovements'])->name('admin.inventory.export');
+
             // Slides
             Route::get('/slides',[AdminController::class,'slides'])->name('admin.slides');
             Route::get('/slide/add',[AdminController::class,'slide_add'])->name('admin.slide.add');
@@ -109,14 +137,10 @@ Route::domain('{subdomain}.localhost')
             Route::get('/contact',[AdminController::class, 'contacts'])->name('admin.contacts');
             Route::delete('/contact/{id}/delete', [AdminController::class, 'contact_delete'])->name('admin.contact.delete');
 
+            // (Cashier dashboard moved outside admin-only group below)
 
 
-            // Cashier dashboard (accessible to cashier role)
-            Route::middleware(['cashier'])->group(function() {
-                Route::get('/cashier/dashboard', function(){ return view('cashier.dashboard'); })->name('admin.cashier.dashboard');
-            });
 
-            // Users (company-scoped)
             Route::resource('/users', \App\Http\Controllers\Admin\UserController::class)->names('admin.users');
             Route::post('/users/{user}/toggle-status', [\App\Http\Controllers\Admin\UserController::class, 'toggleStatus'])->name('admin.users.toggle_status');
             Route::post('/users/{user}/reset-password', [\App\Http\Controllers\Admin\UserController::class, 'resetPassword'])->name('admin.users.reset_password');
@@ -139,17 +163,21 @@ Route::domain('{subdomain}.localhost')
                 ]);
             })->name('admin.debug.scoped_user');
 
-            Route::post('/pos/checkout', [AdminController::class, 'posCheckout'])->name('admin.pos.checkout');
-        });
-
-        // User dashboard routes on tenant subdomain
-        Route::middleware(['auth'])->group(function() {
-            Route::get('/account-dashboard', [UserController::class, 'index'])->name('user.dashboard');
-            Route::get('/account-orders', [UserController::class, 'orders'])->name('user.orders');
-            Route::get('/account-profile', [UserController::class, 'profile'])->name('user.profile');
         });
     });
 
+
+Route::middleware(['auth', \App\Http\Middleware\Role::class . ':admin|cashier'])->prefix('admin')->group(function() {
+    Route::get('/order/{order_id}/details',[AdminController::class, 'order_details'])->name('admin.order.details.fallback');
+});
+
+// CASHIER FALLBACK ROUTES (for development with ports)
+Route::middleware(['auth', \App\Http\Middleware\Role::class . ':cashier'])->prefix('cashier')->name('cashier.')->group(function() {
+    Route::get('/dashboard', [\App\Http\Controllers\Cashier\CashierController::class, 'index'])->name('dashboard.fallback');
+    Route::get('/pos', [\App\Http\Controllers\Cashier\CashierController::class, 'pos'])->name('pos.fallback');
+    Route::get('/shift-summary', [\App\Http\Controllers\Cashier\CashierController::class, 'shiftSummary'])->name('shift-summary.fallback');
+    Route::get('/orders', [\App\Http\Controllers\Cashier\CashierController::class, 'orders'])->name('orders.fallback');
+});
 
 Route::get('/', [HomeController::class, 'index'])->name('home.index');
 Route::get('/shop',[ShopController::class, 'index'])->name('shop.index');
@@ -184,19 +212,36 @@ Route::middleware(['auth'])->group(function(){
     Route::get('/account-orders', [UserController::class, 'orders'])->name('user.orders');
     Route::get('/account-order/{order_id}/details', [UserController::class, 'order_details'])->name('user.order.details');
     Route::put('/account-order/cancel-order', [UserController::class, 'order_cancel'])->name('user.order.cancel');
+    Route::get('/account-addresses', [UserController::class, 'addresses'])->name('user.addresses');
+    Route::get('/account-details', [UserController::class, 'account'])->name('user.account');
+    Route::put('/account-details/update', [UserController::class, 'updateAccount'])->name('user.account.update');
+    Route::put('/account-details/password', [UserController::class, 'updatePassword'])->name('user.account.password');
+    Route::get('/account-wishlist', [UserController::class, 'wishlist'])->name('user.wishlist');
+
+    // Two-Factor Authentication Routes
+    Route::get('/two-factor/enable', [TwoFactorAuthController::class, 'showEnable'])->name('user.two-factor.enable');
+    Route::post('/two-factor/enable', [TwoFactorAuthController::class, 'enable']);
+    Route::get('/two-factor/verify-setup', [TwoFactorAuthController::class, 'showVerifySetup'])->name('user.two-factor.verify-setup');
+    Route::post('/two-factor/verify-setup', [TwoFactorAuthController::class, 'verifySetup']);
+    Route::post('/two-factor/disable', [TwoFactorAuthController::class, 'disable'])->name('user.two-factor.disable');
 });
 
 
 
 
+// CASHIER ROUTES (tenant scoped, role protected)
+Route::domain('{subdomain}.localhost')
+    ->middleware([\App\Http\Middleware\IdentifyCompanyBySubdomain::class, 'auth', 'role:cashier'])
+    ->prefix('cashier')
+    ->name('cashier.')
+    ->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Cashier\CashierController::class, 'index'])->name('dashboard');
+        Route::get('/pos', [\App\Http\Controllers\Cashier\CashierController::class, 'pos'])->name('pos');
+        Route::get('/shift-summary', [\App\Http\Controllers\Cashier\CashierController::class, 'shiftSummary'])->name('shift-summary');
+        // allow cashier to view online orders
+        Route::get('/orders', [\App\Http\Controllers\Cashier\CashierController::class, 'orders'])->name('orders');
+    });
 
-
-// User dashboard routes (for both main domain and subdomains)
-Route::middleware(['auth'])->group(function() {
-    Route::get('/account-dashboard', [App\Http\Controllers\UserController::class, 'index'])->name('user.dashboard');
-    Route::get('/account-orders', [App\Http\Controllers\UserController::class, 'orders'])->name('user.orders');
-    Route::get('/account-profile', [App\Http\Controllers\UserController::class, 'profile'])->name('user.profile');
-});
 
 
 Route::controller(PaymentController::class)
@@ -234,3 +279,9 @@ if (app()->environment('testing')) {
         Route::delete('/admin/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy']);
     });
 }
+
+Route::get('/test', function () {
+    return 'Test route works!';
+});
+
+require __DIR__.'/superadmin.php';

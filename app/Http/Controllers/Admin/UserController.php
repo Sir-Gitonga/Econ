@@ -3,123 +3,150 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\Admin\StoreUserRequest;
+use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
-    public function index()
+    /**
+     * Display a listing of tenant users.
+     */
+    public function index($subdomain)
     {
         $users = User::orderBy('name')->paginate(25);
-        return view('admin.users.index', compact('users'));
-    }
 
-    public function create()
-    {
-        return view('admin.users.create');
-    }
-
-    public function store(Request $request)
-    {
-        $companyId = auth()->user()->company_id;
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users',
-            'mobile' => 'nullable|string|max:20|unique:users',
-            'role' => 'required|in:admin,cashier,user',
-            'password' => 'required|string|min:6|confirmed',
-        ]);
-
-        $user = User::create([
-            'company_id' => $companyId,
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'mobile' => $validated['mobile'] ?? null,
-            'role' => $validated['role'] ?? 'user',
-            'password' => Hash::make($validated['password']),
-            'status' => 1,
-        ]);
-
-        return redirect(adminRoute('admin.users.index'))->with('success', 'User created successfully');
-    }
-
-    public function edit($user)
-    {
-        $user = $this->resolveUser($user);
-        return view('admin.users.edit', compact('user'));
-    }
-
-    public function update(Request $request, $user)
-    {
-        $user = $this->resolveUser($user);
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
-            'mobile' => 'nullable|string|max:20|unique:users,mobile,' . $user->id,
-            'role' => 'required|in:admin,cashier,user',
-            'status' => 'nullable|boolean',
-        ]);
-
-        $user->update([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'mobile' => $validated['mobile'] ?? $user->mobile,
-            'role' => $validated['role'],
-            'status' => isset($validated['status']) ? (bool)$validated['status'] : $user->status,
-        ]);
-
-        return redirect(adminRoute('admin.users.index'))->with('success', 'User updated successfully');
-    }
-
-    public function toggleStatus($user)
-    {
-        $user = $this->resolveUser($user);
-        $user->status = !$user->status;
-        $user->save();
-
-        return back()->with('success', 'User status updated');
-    }
-
-    public function resetPassword($user)
-    {
-        $user = $this->resolveUser($user);
-
-        $new = 'Password123!';
-        $user->password = Hash::make($new);
-        $user->save();
-
-        return back()->with('success', "Password reset to default: $new (advise user to change)");
-    }
-
-    public function destroy($user)
-    {
-        $user = $this->resolveUser($user);
-        $user->delete();
-        return back()->with('success', 'User deleted');
+        return view('admin.users.index', compact('users', 'subdomain'));
     }
 
     /**
-     * Resolve a route parameter into a User model instance.
-     * Accepts a User instance, array/object with an 'id', or a scalar id.
+     * Show the form for creating a new user.
      */
-    private function resolveUser($user): User
+    public function create($subdomain)
     {
-        if ($user instanceof User) {
-            return $user;
+        $company = auth()->user()->company;
+        $roles = Role::where('company_id', $company->id)->orderBy('name')->get();
+
+        return view('admin.users.create', compact('subdomain', 'roles'));
+    }
+
+    /**
+     * Store a newly created user in database.
+     */
+    public function store($subdomain, StoreUserRequest $request)
+    {
+        $company = auth()->user()->company;
+
+        $user = User::create([
+            'company_id' => $company->id,
+            'name'       => $request->validated('name'),
+            'email'      => $request->validated('email'),
+            'mobile'     => $request->validated('mobile'),
+            'password'   => Hash::make($request->validated('password')),
+            'status'     => true,
+        ]);
+
+        // Lookup role by id scoped to company and sync both FK and legacy string
+        $role = Role::where('company_id', $company->id)
+            ->where('id', $request->validated('role_id'))
+            ->first();
+
+        if ($role) {
+            $user->role_id = $role->id;
+            $user->role = $role->name;
+            $user->save();
         }
 
-        if (is_array($user) && isset($user['id'])) {
-            return User::findOrFail($user['id']);
-        }
+        return redirect()->route('admin.users.index', ['subdomain' => $subdomain])
+            ->with('success', "User '{$user->name}' created successfully.");
+    }
 
-        if (is_object($user) && isset($user->id)) {
-            return User::findOrFail($user->id);
-        }
+    /**
+     * Show the form for editing a user.
+     */
+    public function edit($subdomain, User $user)
+    {
+        $company = auth()->user()->company;
+        $roles = Role::where('company_id', $company->id)->orderBy('name')->get();
 
-        // scalar id (string/int)
-        return User::findOrFail($user);
+        return view('admin.users.edit', compact('user', 'subdomain', 'roles'));
+    }
+
+    /**
+     * Update the specified user in database.
+     */
+public function update($subdomain, UpdateUserRequest $request, User $user)
+{
+    // Update basic fields
+    $data = $request->validated();
+
+    $user->update([
+        'name'   => $data['name'],
+        'email'  => $data['email'],
+        'mobile' => $data['mobile'] ?? null,
+        'status' => array_key_exists('status', $data) ? (bool) $data['status'] : $user->status,
+    ]);
+
+    // Ensure role lookup is scoped to the current company (tenant)
+    $company = auth()->user()->company;
+
+    // UpdateUserRequest validates 'role_id' (id from the roles table)
+    $role = Role::where('company_id', $company->id)
+        ->where('id', $data['role_id'])
+        ->first();
+
+    if ($role) {
+        // Sync both FK and legacy string column so getRoleName() and relations work
+        $user->role_id = $role->id;
+        $user->role = $role->name;
+        $user->save();
+    }
+
+    // Redirect back to admin users index with success message
+    return redirect()->route('admin.users.index', ['subdomain' => $subdomain])
+        ->with('success', "User '{$user->name}' updated successfully.");
+}
+
+
+    /**
+     * Toggle user status (active/inactive).
+     */
+    public function toggleStatus($subdomain, User $user)
+    {
+        $user->update(['status' => !$user->status]);
+        $status = $user->status ? 'activated' : 'deactivated';
+
+        return redirect()->route('admin.users.index', ['subdomain' => $subdomain])
+            ->with('success', "User '{$user->name}' has been {$status}.");
+    }
+
+    /**
+     * Reset user password to a secure random password.
+     */
+    public function resetPassword($subdomain, User $user)
+    {
+        $temporaryPassword = Str::random(12);
+
+        $user->update([
+            'password' => Hash::make($temporaryPassword),
+        ]);
+
+        return redirect()->route('admin.users.index', ['subdomain' => $subdomain])
+            ->with('success', "Password reset. Temporary password: {$temporaryPassword}");
+    }
+
+    /**
+     * Delete a user from the system.
+     */
+    public function destroy($subdomain, User $user)
+    {
+        $name = $user->name;
+        $user->delete();
+
+        return redirect()->route('admin.users.index', ['subdomain' => $subdomain])
+            ->with('success', "User '{$name}' has been deleted.");
     }
 }

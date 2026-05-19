@@ -35,7 +35,8 @@ class Role
         // Normalize roles array
         $roles = $this->normalizeRoles($roles);
 
-        $userRole = $request->user()->role ?? null;
+// use User helper to handle normalization
+        $userRole = $request->user()->getRoleName() ?? null;
 
         // Check if user's role matches any required role
         if ($userRole && in_array($userRole, $roles)) {

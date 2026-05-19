@@ -165,8 +165,7 @@
                     <tr>
                         <th>Subtotal</th>
                         <td>Ksh{{$order->subtotal}}</td>
-                        <th>Tax</th>
-                        <td>Ksh{{$order->tax}}</td>
+
                         <th>Discount</th>
                         <td>Ksh{{$order->discount}}</td>
                     </tr>

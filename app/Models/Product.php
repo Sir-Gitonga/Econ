@@ -26,7 +26,9 @@ class Product extends Model
         'sale_price',
         'SKU',
         'featured',
-        'quantity',
+        'stock_quantity',
+        'low_stock_threshold',
+        'stock_status',
         'image',
         'category_id',
         'brand_id',
@@ -57,6 +59,22 @@ class Product extends Model
     public function brand()
     {
         return $this->belongsTo(Brand::class, 'brand_id');
+    }
+
+    /**
+     * Items sold for this product
+     */
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Stock movement history
+     */
+    public function movements()
+    {
+        return $this->hasMany(StockMovement::class);
     }
 }
 

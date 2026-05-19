@@ -32,7 +32,7 @@ class CartController extends Controller
         $product = Cart::instance('cart')->get($rowId);
         $dbProduct = \App\Models\Product::find($product->id);
 
-        if ($product->qty < $dbProduct->quantity) {
+        if ($product->qty < $dbProduct->stock_quantity) {
             $qty = $product->qty + 1;
             Cart::instance('cart')->update($rowId, $qty);
         } else {
@@ -106,13 +106,11 @@ class CartController extends Controller
             }
 
             $subtotalAfterDiscount = Cart::instance('cart')->subtotal() - $discount;
-            $taxAfterDiscount = ($subtotalAfterDiscount * config('cart.tax'))/100;
-            $totalAfterDiscount = $subtotalAfterDiscount + $taxAfterDiscount;
+            $totalAfterDiscount = $subtotalAfterDiscount;
 
             Session::put('discounts',[
                 'discount' => number_format(floatval($discount),2,'.',''),
                 'subtotal' => number_format(floatval($subtotalAfterDiscount),2,'.',''),
-                'tax' => number_format(floatval($taxAfterDiscount),2,'.',''),
                 'total' => number_format(floatval($totalAfterDiscount),2,'.','')
             ]);
         }
@@ -141,8 +139,8 @@ public function place_an_order(Request $request)
             return back()->with('error', "Product {$item->name} not found.");
         }
 
-        if ($item->qty > $product->quantity) {
-            return back()->with('error', "Sorry, only {$product->quantity} of {$item->name} left in stock.");
+        if ($item->qty > $product->stock_quantity) {
+            return back()->with('error', "Sorry, only {$product->stock_quantity} of {$item->name} left in stock.");
         }
     }
 
@@ -186,7 +184,7 @@ public function place_an_order(Request $request)
     $order->company_id = auth()->user()->company_id;
     $order->subtotal = (float) str_replace(',', '', Session::get('checkout')['subtotal']);
     $order->discount = (float) str_replace(',', '', Session::get('checkout')['discount']);
-    $order->tax = (float) str_replace(',', '', Session::get('checkout')['tax']);
+    $order->tax = 0;
     $order->total = (float) str_replace(',', '', Session::get('checkout')['total']);
     $order->name = $address->name;
     $order->phone = $address->phone;
@@ -199,7 +197,8 @@ public function place_an_order(Request $request)
     $order->landmark = $address->landmark;
     $order->save();
 
-    // 🔎 Step 4: Save order items
+    // 🔎 Step 4: Save order items and deduct stock
+    $inventoryService = new \App\Services\InventoryService();
     foreach (Cart::instance('cart')->content() as $item) {
         $orderItem = new OrderItem();
         $orderItem->product_id = $item->id;
@@ -208,6 +207,9 @@ public function place_an_order(Request $request)
         $orderItem->price = $item->price;
         $orderItem->quantity = $item->qty;
         $orderItem->save();
+
+        // Deduct product stock and create movement record
+        $inventoryService->deductStock($item->id, $item->qty, $order->id, Order::class);
     }
 
     // 🔎 Step 5: Handle transactions
@@ -249,17 +251,14 @@ public function place_an_order(Request $request)
             Session::put('checkout',[
                 'discount' => Session::get('discounts')['discount'],
                 'subtotal' => Session::get('discounts')['subtotal'],
-                'tax' => Session::get('discounts')['tax'],
                 'total' => Session::get('discounts')['total'],
-
             ]);
         }
         else{
             Session::put('checkout',[
                 'discount' => 0,
                 'subtotal' => Cart::instance('cart')->subtotal(),
-                'tax' => Cart::instance('cart')->tax(),
-                'total' => Cart::instance('cart')->total(),
+                'total' => Cart::instance('cart')->subtotal(),
             ]);
         }
     }

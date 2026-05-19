@@ -343,7 +343,7 @@
                       <use href="#icon_next_sm" />
                     </svg></span>
                 </div>
-                @if($product->quantity > 0)
+                @if($product->stock_quantity > 0)
                     {{-- Product In Stock --}}
                     @if(Cart::instance('cart')->content()->where('id',$product->id)->count() > 0)
                         <a href="{{ route('cart.index') }}"

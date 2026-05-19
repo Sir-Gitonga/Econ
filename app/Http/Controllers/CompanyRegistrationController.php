@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,12 +46,30 @@ class CompanyRegistrationController extends Controller
                 'password' => Hash::make($validated['password']),
             ]);
 
+            // Ensure default roles exists for the company
+            foreach (['admin', 'cashier', 'user'] as $roleName) {
+                Role::firstOrCreate([
+                    'company_id' => $company->id,
+                    'name' => $roleName,
+                ], [
+                    'label' => ucfirst($roleName),
+                    'description' => match ($roleName) {
+                        'admin' => 'Full access to all features and user management',
+                        'cashier' => 'Can perform POS sales and view their own sales',
+                        default => 'Regular user/customer with limited access',
+                    },
+                ]);
+            }
+
+            $adminRole = Role::where('company_id', $company->id)->where('name', 'admin')->first();
+
             // Create admin user for the company
             $user = User::create([
                 'company_id' => $company->id,
                 'name' => $validated['company_name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
+                'role_id' => $adminRole?->id,
                 'role' => 'admin',
             ]);
 

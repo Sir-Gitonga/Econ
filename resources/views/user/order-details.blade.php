@@ -1,305 +1,212 @@
-@extends('layouts.app')
+@extends('user.layouts.dashboard')
 
-@section('content')
-<style>
-    .pt-90 {
-      padding-top: 90px !important;
-    }
+@section('dashboard-content')
+    <div class="page-header">
+        <h1>📦 Order Details</h1>
+        <p>Order #{{ $order->id }} • Placed on {{ $order->order_date ? $order->order_date->format('M d, Y') : 'N/A' }}</p>
+    </div>
 
-    .pr-6px {
-      padding-right: 6px;
-      text-transform: uppercase;
-    }
-
-    .my-account .page-title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      margin-bottom: 40px;
-      border-bottom: 1px solid;
-      padding-bottom: 13px;
-    }
-
-    .my-account .wg-box {
-      display: -webkit-box;
-      display: -moz-box;
-      display: -ms-flexbox;
-      display: -webkit-flex;
-      display: flex;
-      padding: 24px;
-      flex-direction: column;
-      gap: 24px;
-      border-radius: 12px;
-      background: var(--White);
-      box-shadow: 0px 4px 24px 2px rgba(20, 25, 38, 0.05);
-    }
-
-    .bg-success {
-      background-color: #40c710 !important;
-    }
-
-    .bg-danger {
-      background-color: #f44032 !important;
-    }
-
-    .bg-warning {
-      background-color: #f5d700 !important;
-      color: #000;
-    }
-
-    .table-transaction>tbody>tr:nth-of-type(odd) {
-      --bs-table-accent-bg: #fff !important;
-
-    }
-
-    .table-transaction th,
-    .table-transaction td {
-      padding: 0.625rem 1.5rem .25rem !important;
-      color: #000 !important;
-    }
-
-    .table> :not(caption)>tr>th {
-      padding: 0.625rem 1.5rem .25rem !important;
-      background-color: #6a6e51 !important;
-    }
-
-    .table-bordered>:not(caption)>*>* {
-      border-width: inherit;
-      line-height: 32px;
-      font-size: 14px;
-      border: 1px solid #e1e1e1;
-      vertical-align: middle;
-    }
-
-    .table-striped .image {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 50px;
-      height: 50px;
-      flex-shrink: 0;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-
-    .table-striped td:nth-child(1) {
-      min-width: 250px;
-      padding-bottom: 7px;
-    }
-
-    .pname {
-      display: flex;
-      gap: 13px;
-    }
-
-    .table-bordered> :not(caption)>tr>th,
-    .table-bordered> :not(caption)>tr>td {
-      border-width: 1px 1px;
-      border-color: #6a6e51;
-    }
-  </style>
-    <main class="pt-90" style="padding-top: 0px;">
-        <div class="mb-4 pb-4"></div>
-        <section class="my-account container">
-            <h2 class="page-title">Orders Details</h2>
-            <div class="row">
-                <div class="col-lg-2">
-                    @include('user.account-nav')
+    {{-- ORDER SUMMARY CARD --}}
+    <div class="dashboard-card" style="margin-bottom: 2rem;">
+        <div class="dashboard-card-content">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; align-items: center;">
+                <div>
+                    <div class="dashboard-card-label">Order Status</div>
+                    <div style="margin-top: 0.5rem;">
+                        <x-order-badge :status="$order->status ?? 'pending'" />
+                    </div>
                 </div>
+                <div>
+                    <div class="dashboard-card-label">Total Amount</div>
+                    <div class="dashboard-card-value">KES {{ number_format($order->total_amount ?? 0, 2) }}</div>
+                </div>
+                <div>
+                    <div class="dashboard-card-label">Items Ordered</div>
+                    <div class="dashboard-card-value">{{ count($order->orderItems ?? []) }}</div>
+                </div>
+                <div>
+                    <div class="dashboard-card-label">Payment Method</div>
+                    <div class="dashboard-card-value">{{ $order->payment_method ?? 'N/A' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                <div class="col-lg-10">
-                    <div class="wg-box">
-                        <div class="flex items-center justify-between gap10 flex-wrap">
-                            <div class="row">
-                                <div class="col-6">
-                                    <h5>Ordered Details</h5>
-                                </div>
-                                <div class="col-6 text-right">
-                                    <a class="btn btn-sm btn-danger" href="{{route('user.orders')}}">Back</a>
-                                </div>
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+
+        {{-- ORDER ITEMS SECTION --}}
+        <div>
+            <div style="background: var(--white); border-radius: var(--radius-lg); padding: 2rem; border: 1px solid var(--gray-200); margin-bottom: 2rem;">
+                <h3 style="color: var(--gray-900); margin-bottom: 1.5rem; font-size: 1.25rem;">Order Items</h3>
+
+                @foreach($order->orderItems ?? [] as $item)
+                    <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--gray-100);">
+                        <div style="width: 60px; height: 60px; border-radius: var(--radius-md); overflow: hidden; background: var(--gray-100); flex-shrink: 0;">
+                            <img src="{{ asset('uploads/products/thumbnails/' . ($item->product->image ?? 'placeholder.jpg')) }}" 
+                                 alt="{{ $item->product->name }}" 
+                                 style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 0.25rem 0; font-size: 1rem; color: var(--gray-900);">
+                                <a href="{{ route('shop.product.details', ['product_slug' => $item->product->slug]) }}" 
+                                   style="color: inherit; text-decoration: none;" target="_blank">
+                                    {{ $item->product->name }}
+                                </a>
+                            </h4>
+                            <div style="display: flex; gap: 1rem; font-size: 0.85rem; color: var(--gray-500);">
+                                <span>SKU: {{ $item->product->SKU ?? 'N/A' }}</span>
+                                <span>Qty: {{ $item->quantity }}</span>
+                                <span>Price: KES {{ number_format($item->price, 2) }}</span>
                             </div>
                         </div>
-                        <div class="table-responsive">
-                            @if (Session::has('status'))
-                                <p class="alert alert-success">{{ Session::get('status') }}</p>
-                            @endif
-                            <table class="table table-bordered">
-                                <tr>
-                                    <th>Order No.</th>
-                                    <td>{{ $order->id }}</td>
-                                    <th>Mobile</th>
-                                    <td>{{ $order->phone }}</td>
-                                    <th>Zip Code</th>
-                                    <td>{{ $order->zip_code }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Order Date</th>
-                                    <td>{{ $order->id }}</td>
-                                    <th>Delivered Date</th>
-                                    <td>{{ $order->delivered_date }}</td>
-                                    <th>Canceled Date</th>
-                                    <td>{{ $order->canceled_date}}</td>
-                                </tr>
-                                <tr>
-                                    <th>Order Status</th>
-                                    <td colspan="5">
-                                        @if($order->status == 'delivered')
-                                            <span class="badge bg-success">Delivered</span>
-                                        @elseif($order->status == 'canceled')
-                                            <span class="badge bg-danger">Canceled</span>
-                                        @else
-                                            <span class="badge bg-warning">Ordered</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            </table>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 600; color: var(--gray-900);">KES {{ number_format($item->price * $item->quantity, 2) }}</div>
                         </div>
                     </div>
+                @endforeach
 
-                    <div class="wg-box">
-                        <div class="flex items-center justify-between gap10 flex-wrap">
-                            <div class="wg-filter flex-grow">
-                                <h5>Ordered Items</h5>
+                {{-- ORDER TOTALS --}}
+                <div style="margin-top: 2rem; padding-top: 1rem; border-top: 2px solid var(--gray-100);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: var(--gray-600);">Subtotal:</span>
+                        <span style="color: var(--gray-900); font-weight: 500;">KES {{ number_format($order->subtotal ?? 0, 2) }}</span>
+                    </div>
+                    @if($order->discount ?? 0 > 0)
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: var(--gray-600);">Discount:</span>
+                            <span style="color: var(--success); font-weight: 500;">-KES {{ number_format($order->discount ?? 0, 2) }}</span>
+                        </div>
+                    @endif
+                    <div style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 700; color: var(--gray-900);">
+                        <span>Total:</span>
+                        <span>KES {{ number_format($order->total_amount ?? 0, 2) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ACTIONS --}}
+            @if($order->status == 'ordered')
+                <div style="background: var(--danger-light); border: 1px solid var(--danger); border-radius: var(--radius-lg); padding: 1.5rem;">
+                    <h4 style="color: var(--danger); margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Cancel Order
+                    </h4>
+                    <p style="color: #b91c1c; margin: 0 0 1rem 0;">Are you sure you want to cancel this order? This action cannot be undone.</p>
+                    <form action="{{ route('user.order.cancel') }}" method="POST" id="cancel-form">
+                        @csrf
+                        @method('PUT')
+                        <input type="hidden" name="order_id" value="{{ $order->id }}">
+                        <div style="display: flex; gap: 1rem;">
+                            <button type="button" class="btn btn-secondary" onclick="history.back()">Go Back</button>
+                            <button type="button" class="btn" style="background: var(--danger); color: white;" onclick="confirmCancel()">
+                                <i class="fas fa-times"></i>
+                                Cancel Order
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            @else
+                <div style="text-align: center;">
+                    <a href="{{ route('user.orders') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to Orders
+                    </a>
+                </div>
+            @endif
+        </div>
+
+        {{-- SIDEBAR INFO --}}
+        <div>
+
+            {{-- SHIPPING ADDRESS --}}
+            <div style="background: var(--white); border-radius: var(--radius-lg); padding: 1.5rem; border: 1px solid var(--gray-200); margin-bottom: 2rem;">
+                <h4 style="color: var(--gray-900); margin-bottom: 1rem; font-size: 1.1rem;">Shipping Address</h4>
+                <div style="color: var(--gray-700);">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem;">{{ $order->name ?? 'N/A' }}</div>
+                    <div>{{ $order->address ?? 'N/A' }}</div>
+                    <div>{{ $order->locality ?? '' }}, {{ $order->city ?? 'N/A' }}, {{ $order->country ?? 'N/A' }}</div>
+                    <div>{{ $order->zip_code ?? 'N/A' }}</div>
+                    <div style="margin-top: 0.5rem;">📞 {{ $order->phone ?? 'N/A' }}</div>
+                </div>
+            </div>
+
+            {{-- PAYMENT INFO --}}
+            <div style="background: var(--white); border-radius: var(--radius-lg); padding: 1.5rem; border: 1px solid var(--gray-200); margin-bottom: 2rem;">
+                <h4 style="color: var(--gray-900); margin-bottom: 1rem; font-size: 1.1rem;">Payment Information</h4>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--gray-600);">Method:</span>
+                        <span style="color: var(--gray-900); font-weight: 500;">{{ $transaction->mode ?? 'N/A' }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--gray-600);">Status:</span>
+                        @if($transaction->status ?? '' == 'approved')
+                            <span class="badge badge-success">Approved</span>
+                        @elseif($transaction->status ?? '' == 'declined')
+                            <span class="badge badge-danger">Declined</span>
+                        @elseif($transaction->status ?? '' == 'refunded')
+                            <span class="badge badge-warning">Refunded</span>
+                        @else
+                            <span class="badge badge-warning">Pending</span>
+                        @endif
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--gray-600);">Transaction ID:</span>
+                        <span style="color: var(--gray-900); font-weight: 500;">{{ $transaction->id ?? 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ORDER TIMELINE --}}
+            <div style="background: var(--white); border-radius: var(--radius-lg); padding: 1.5rem; border: 1px solid var(--gray-200);">
+                <h4 style="color: var(--gray-900); margin-bottom: 1rem; font-size: 1.1rem;">Order Timeline</h4>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); flex-shrink: 0;"></div>
+                        <div>
+                            <div style="font-weight: 500; color: var(--gray-900);">Order Placed</div>
+                            <small style="color: var(--gray-500);">{{ $order->order_date ? $order->order_date->format('M d, Y H:i') : 'N/A' }}</small>
+                        </div>
+                    </div>
+                    @if($order->status == 'delivered')
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); flex-shrink: 0;"></div>
+                            <div>
+                                <div style="font-weight: 500; color: var(--gray-900);">Delivered</div>
+                                <small style="color: var(--gray-500);">{{ $order->delivered_date ? $order->delivered_date->format('M d, Y H:i') : 'N/A' }}</small>
                             </div>
                         </div>
-                        <div class="table-responsive">
-                            <table class="table table-striped table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th class="text-center">Price</th>
-                                        <th class="text-center">Quantity</th>
-                                        <th class="text-center">SKU</th>
-                                        <th class="text-center">Category</th>
-                                        <th class="text-center">Brand</th>
-                                        <th class="text-center">Options</th>
-                                        <th class="text-center">Return Status</th>
-                                        <th class="text-center">Action</th>
-                                    </tr>
-                                </thead>
-                                    @foreach ($orderItems as $item)
-                                <tbody>
-                                    <tr>
-
-                                        <td class="pname">
-                                            <div class="image">
-                                                <img src="{{asset('uploads/products/thumbnails')}}/{{$item->product->image}}" alt="{{$item->product->name}}" class="image">
-                                            </div>
-                                            <div class="name">
-                                                <a href="{{route('shop.product.details',['product_slug'=>$item->product->slug])}}" target="_blank"
-                                                    class="body-title-2">{{$item->product->name}}</a>
-                                            </div>
-                                        </td>
-                                        <td class="text-center">Ksh{{$item->price}}</td>
-                                        <td class="text-center">{{$item->quantity}}</td>
-                                        <td class="text-center">{{$item->product->SKU}}</td>
-                                        <td class="text-center">{{$item->product->category->name}}</td>
-                                        <td class="text-center">{{$item->product->brand->name}}</td>
-                                        <td class="text-center">{{$item->options}}</td>
-                                        <td class="text-center">{{$item->rstatus == 0 ? "No":"Yes"}}</td>
-                                        <td class="text-center">
-                                            <div class="list-icon-function view-icon">
-                                                <div class="item eye">
-                                                    <i class="icon-eye"></i>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="divider"></div>
-                        <div class="flex items-center justify-between flex-wrap gap10 wgp-pagination">
-                            {{$orderItems->links('pagination::bootstrap-5')}}
-                        </div>
-                    </div>
-
-                    <div class="wg-box mt-5">
-                        <h5>Shipping Address</h5>
-                        <div class="my-account__address-item col-md-6">
-                            <div class="my-account__address-item__detail">
-                                <p>{{$order->name}}</p>
-                                <p>{{$order->address}}</p>
-                                <p>{{$order->locality}}, DEF</p>
-                                <p>{{$order->city}},{{$order->country}} </p>
-                                <p>{{$order->landmark}}</p>
-                                <p>{{$order->zip}}</p>
-                                <br>
-                                <p>Mobile : {{$order->phone}}</p>
+                    @elseif($order->status == 'canceled')
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--danger); flex-shrink: 0;"></div>
+                            <div>
+                                <div style="font-weight: 500; color: var(--gray-900);">Canceled</div>
+                                <small style="color: var(--gray-500);">{{ $order->canceled_date ? $order->canceled_date->format('M d, Y H:i') : 'N/A' }}</small>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="wg-box mt-5">
-                        <h5>Transactions</h5>
-                        <table class="table table-striped table-bordered table-transaction">
-                            <tbody>
-                                <tr>
-                                    <th>Subtotal</th>
-                                    <td>Ksh{{$order->subtotal}}</td>
-                                    <th>Tax</th>
-                                    <td>Ksh{{$order->tax}}</td>
-                                    <th>Discount</th>
-                                    <td>Ksh{{$order->discount}}</td>
-                                </tr>
-                                <tr>
-                                    <th>Total</th>
-                                    <td>Ksh{{$order->total}}</td>
-                                    <th>Payment Mode</th>
-                                    <td>{{$transaction->mode}}</td>
-                                    <th>Status</th>
-                                    <td>
-                                        @if($transaction->status == 'approved')
-                                            <span class="badge bg-success">Approved</span>
-                                        @elseif($transaction->status == 'declined')
-                                            <span class="badge bg-danger">Declined</span>
-                                        @elseif($transaction->status == 'refunded')
-                                            <span class="badge bg-secondary">Refunded</span>
-                                        @else
-                                            <span class="badge bg-warning">pending</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    @if ($order->status == 'ordered')
-                    <div class="wg-box mt-5 text-right">
-                        <form action="{{route('user.order.cancel')}}" method="POST">
-                            @csrf
-                            @method('PUT')
-                            <input type="hidden" name="order_id" value="{{$order->id}}">
-                            <button type="button" class="btn btn-danger cancel-order">Cancel Order</button>
-                        </form>
-                    </div>
+                    @else
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--warning); flex-shrink: 0;"></div>
+                            <div>
+                                <div style="font-weight: 500; color: var(--gray-900);">Processing</div>
+                                <small style="color: var(--gray-500);">Your order is being prepared</small>
+                            </div>
+                        </div>
                     @endif
                 </div>
-
             </div>
-        </section>
-    </main>
+
+        </div>
+
+    </div>
 @endsection
+
 @push('scripts')
 <script>
-    $(function() {
-        $('.cancel-order').on('click', function(e) {
-            e.preventDefault();
-            var form = $(this).closest('form');
-            swal({
-                title: "Are you sure?",
-                text: "You want to cancel this order?",
-                type: "warning",
-                buttons: ["No", "Yes"],
-                confirmButtonColor: "#dc3545"
-            }).then(function(result) {
-                if (result) {
-                    form.submit();
-                }
-            });
-        });
-    });
+function confirmCancel() {
+    if (confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
+        document.getElementById('cancel-form').submit();
+    }
+}
 </script>
-
 @endpush

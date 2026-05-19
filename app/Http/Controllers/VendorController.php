@@ -8,6 +8,8 @@ class VendorController extends Controller
 {
     public function index()
     {
-        return view('admin.dashboard'); // create this view
+        // vendor portal currently reuses admin dashboard layout
+        $layout = 'layouts.admin';
+        return view('dashboard', compact('layout'));
     }
 }

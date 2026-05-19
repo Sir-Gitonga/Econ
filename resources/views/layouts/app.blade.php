@@ -10,24 +10,21 @@
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
-    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <meta name="author" content="Softifyx" />
     <link rel="shortcut icon" href="{{ asset('assets/images/favicon.ico') }}" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <link rel="preconnect" href="https://fonts.gstatic.com/">
     <link
-        href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&amp;display=swap"
+        href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
         rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Allura&amp;display=swap" rel="stylesheet">
+    </link>    
+    <link href="https://fonts.googleapis.com/css2?family=Allura&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('assets/css/plugins/swiper.min.css')}}" type="text/css" />
     <link rel="stylesheet" href="{{ asset('assets/css/style.css')}}" type="text/css" />
     <link rel="stylesheet" type="text/css" href="{{ asset('css/sweetalert.min.css')}}">
     <link rel="stylesheet" href="{{ asset('assets/css/custom.css')}}" type="text/css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
-        integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw=="
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
         crossorigin="anonymous" referrerpolicy="no-referrer">
     @stack("styles")
 </head>
@@ -259,12 +256,13 @@
     </svg>
     <style>
         body {
-            padding-top: 60px;
+            padding-top: 10px;
             font-family: 'Jost', sans-serif;
         }
         #header {
-            padding-top: 8px;
-            padding-bottom: 8px;
+            padding-top: 1px;
+            padding-bottom: 1px;
+            box-shadow: black 0px 1px 5px;
         }
 
         .logo__image {
@@ -288,8 +286,7 @@
     gap: 10px;
     flex-shrink: 0;
     padding: 5px;
-    border-radius: 10px;
-    background: #EFF4F8;
+    border-radius: 50%;
 }
 
 #box-content-search li {
@@ -300,6 +297,30 @@
     margin-bottom: 10px;
 }
 
+/* Header hide/show on scroll */
+.header-mobile {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0;
+    right: 0;
+    transition: transform 0.3s ease-in-out;
+    transform: translateY(0) !important;
+    z-index: 1030;
+    width: 100%;
+    margin: 0 !important;
+}
+
+.header-mobile.header-hidden {
+    transform: translateY(-100%) !important;
+}
+header{
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    background-color: green;
+}
 
     </style>
     <div class="header-mobile header_sticky">
@@ -799,6 +820,30 @@
     </script>
 
     <script src="{{ asset('assets/js/theme.js')}}"></script>
+    
+    <!-- Live Stock Manager for real-time inventory updates -->
+    <script src="{{ asset('js/stock-manager.js')}}"></script>
+    
+    <script>
+        // Hide/show header on scroll
+        let lastScrollTop = 0;
+        const header = document.querySelector('.header-mobile');
+        
+        window.addEventListener('scroll', function() {
+            let currentScroll = window.scrollY || document.documentElement.scrollTop;
+            
+            // If scrolling down, hide the header
+            if (currentScroll > lastScrollTop && currentScroll > 50) {
+                header.classList.add('header-hidden');
+            } else {
+                // If scrolling up, show the header immediately from top
+                header.classList.remove('header-hidden');
+            }
+            
+            lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
+        });
+    </script>
+
     @stack("scripts")
 </body>
 

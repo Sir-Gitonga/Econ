@@ -90,8 +90,7 @@
                   <td>Free shipping</td>
                 </tr>
                 <tr>
-                  <th>VAT</th>
-                  <td>Ksh{{$order->tax}}</td>
+
                 </tr>
                 <tr>
                   <th>TOTAL</th>

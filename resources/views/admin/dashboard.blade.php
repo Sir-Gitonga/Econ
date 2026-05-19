@@ -209,7 +209,7 @@
                                     <th class="text-center">Name</th>
                                     <th class="text-center">Phone</th>
                                     <th class="text-center">Subtotal</th>
-                                    <th class="text-center">Tax</th>
+
                                     <th class="text-center">Total</th>
 
                                     <th class="text-center">Status</th>
@@ -226,7 +226,7 @@
                                     <td class="text-center">{{$order->name}}</td>
                                     <td class="text-center">{{$order->phone}}</td>
                                     <td class="text-center">Ksh{{$order->subtotal}}</td>
-                                    <td class="text-center">Ksh{{$order->tax}}</td>
+
                                     <td class="text-center">Ksh{{$order->total}}</td>
 
                                     <td class="text-center">
@@ -383,4 +383,3 @@
     })(jQuery);
 </script>
 @endpush
-

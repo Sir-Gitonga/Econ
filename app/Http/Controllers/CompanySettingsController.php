@@ -37,6 +37,16 @@ class CompanySettingsController extends Controller
         $smsSetting = $company->smsSetting;
         $whatsappSetting = $company->whatsappSetting;
 
+        // Billing & Subscription variables (for partial)
+        $plans = \App\Models\SubscriptionPlan::all();
+        $currentPlan = $company->currentPlan ?? null;
+        $paymentHistory = $company->payments()->orderByDesc('created_at')->limit(10)->get();
+        $isInTrial = method_exists($company, 'isInTrial') ? $company->isInTrial() : false;
+        $remainingTrialDays = method_exists($company, 'getRemainingTrialDays') ? $company->getRemainingTrialDays() : null;
+        $shouldShowPaymentDue = method_exists($company, 'shouldShowPaymentDueNotification') ? $company->shouldShowPaymentDueNotification() : false;
+        $isPaymentAvailable = method_exists($company, 'isPaymentAvailable') ? $company->isPaymentAvailable() : false;
+        $daysUntilExpiry = method_exists($company, 'getDaysUntilExpiry') ? $company->getDaysUntilExpiry() : null;
+
         return view('admin.settings.index', compact(
             'company',
             'companySetting',
@@ -45,7 +55,15 @@ class CompanySettingsController extends Controller
             'communicationSetting',
             'businessSetting',
             'smsSetting',
-            'whatsappSetting'
+            'whatsappSetting',
+            'plans',
+            'currentPlan',
+            'paymentHistory',
+            'isInTrial',
+            'remainingTrialDays',
+            'shouldShowPaymentDue',
+            'isPaymentAvailable',
+            'daysUntilExpiry'
         ));
     }
 

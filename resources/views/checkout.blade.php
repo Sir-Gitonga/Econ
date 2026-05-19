@@ -154,10 +154,6 @@
                                 <td>Free</td>
                             </tr>
                             <tr class="text-right">
-                                <th>VAT</th>
-                                <td>${{ optional(Session::get('discounts'))['tax'] ?? '0.00' }}</td>
-                            </tr>
-                            <tr class="text-right">
                                 <th>Total</th>
                                 <td>${{ optional(Session::get('discounts'))['total'] ?? Cart::instance('cart')->total() }}</td>
                             </tr>
@@ -175,9 +171,6 @@
                           <td class="text-right">Free shipping</td>
                         </tr>
                         <tr>
-                          <th>VAT</th>
-                          <td class="text-right">Ksh{{Cart::instance('cart')->tax()}}</td>
-                        </tr>
                         <tr>
                           <th>TOTAL</th>
                           <td class="text-right">Ksh{{Cart::instance('cart')->total()}}</td>

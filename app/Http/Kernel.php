@@ -67,6 +67,6 @@ class Kernel extends HttpKernel
         'identify.company.subdomain' => \App\Http\Middleware\IdentifyCompanyBySubdomain::class,
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
         'cashier' => \App\Http\Middleware\CashierMiddleware::class,
-        'role' => \App\Http\Middleware\Role::class,
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
     ];
 }

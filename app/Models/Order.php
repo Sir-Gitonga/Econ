@@ -17,7 +17,7 @@ class Order extends Model
 {
     use HasFactory, HasCompany;
 
-    protected $fillable = ['user_id', 'subtotal', 'discount', 'tax', 'total', 'firstname', 'lastname', 'mobile', 'email', 'line1', 'line2', 'city', 'province', 'country', 'zipcode', 'status', 'is_shipping_different', 'delivered_date', 'canceled_date', 'company_id'];
+    protected $fillable = ['user_id', 'subtotal', 'discount', 'tax', 'total', 'firstname', 'lastname', 'mobile', 'email', 'line1', 'line2', 'city', 'province', 'country', 'zipcode', 'status', 'is_shipping_different', 'delivered_date', 'canceled_date', 'refunded_at', 'refunded_by', 'company_id'];
 
     /**
      * Boot the model.
@@ -36,6 +36,11 @@ class Order extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function cashier()
+    {
+        return $this->belongsTo(User::class,'created_by');
+    }
+
     /**
      * Get items in this order.
      */
@@ -44,11 +49,18 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    /**
-     * Get transaction for this order.
-     */
+    public function payments()
+    {
+        return $this->hasMany(OrderPayment::class, 'order_id');
+    }
+
+    public function stockMovements()
+    {
+        return $this->hasMany(StockMovement::class, 'reference', 'reference');
+    }
+
     public function transaction()
     {
-        return $this->hasOne(Transaction::class);
+        return $this->hasOne(Transaction::class, 'order_id');
     }
 }

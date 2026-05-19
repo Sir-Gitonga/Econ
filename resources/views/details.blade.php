@@ -112,7 +112,7 @@
           <div class="product-single__short-desc">
             <p>{{$product->short_description}}</p>
           </div>
-          @if($product->quantity > 0)
+          @if($product->stock_quantity > 0)
             @if(Cart::instance('cart')->content()->where('id',$product->id)->count()>0)
                 <a href="{{ route('cart.index') }}" class="btn btn-warning mb-3">Go to Cart</a>
             @else
@@ -120,7 +120,7 @@
                     @csrf
                     <div class="product-single__addtocart">
                         <div class="qty-control position-relative">
-                            <input type="number" name="quantity" value="1" min="1" max="{{$product->quantity}}" class="qty-control__number text-center">
+                            <input type="number" name="quantity" value="1" min="1" max="{{$product->stock_quantity}}" class="qty-control__number text-center">
                             <div class="qty-control__reduce">-</div>
                             <div class="qty-control__increase">+</div>
                         </div>

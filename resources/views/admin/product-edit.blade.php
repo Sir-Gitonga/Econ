@@ -179,7 +179,7 @@
                         <div class="body-title mb-10">Quantity <span class="tf-color-1">*</span>
                         </div>
                         <input class="mb-10" type="text" placeholder="Enter quantity"
-                            name="quantity" tabindex="0" value="{{$product->quantity}}" aria-required="true"
+                            name="quantity" tabindex="0" value="{{$product->stock_quantity}}" aria-required="true"
                             required="">
                     </fieldset>
                     @error('quantity') <span class="alert alert-danger text-center">{{$message}}  @enderror

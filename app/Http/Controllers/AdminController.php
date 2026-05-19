@@ -8,9 +8,10 @@ use App\Models\Contact;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\product;
+use App\Models\Product;
 use App\Models\Slide;
 use App\Models\Transaction;
+use App\Services\DashboardStatsService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -67,6 +68,7 @@ class AdminController extends Controller
     {
         ini_set('memory_limit', '1024M');
         $user = Auth::user();
+        $company = $user->company;
 
         // Get latest orders using raw query only - no Eloquent to avoid circular references and eager loading
         $ordersQuery = "SELECT o.id, o.user_id, o.name, o.phone, o.subtotal, o.tax, o.total, o.status, o.created_at, o.delivered_date, COUNT(oi.id) as items_count FROM orders o LEFT JOIN order_items oi ON o.id = oi.order_id";
@@ -78,23 +80,18 @@ class AdminController extends Controller
         $ordersQuery .= " GROUP BY o.id, o.user_id, o.name, o.phone, o.subtotal, o.tax, o.total, o.status, o.created_at, o.delivered_date ORDER BY o.created_at DESC LIMIT 10";
         $orders = DB::select($ordersQuery, $bindings);
 
-        // Aggregate dashboard data (global scope applies)
-        $dashboardQuery = DB::table('orders');
-        if ($user && $user->company_id) {
-            $dashboardQuery->where('company_id', $user->company_id);
+        // Obtain aggregated dashboard statistics via service.  We cache
+        // results per company to avoid expensive queries on every page load.
+        $statsService = app(\App\Services\DashboardStatsService::class);
+        $companyId = $company->id ?? null;
+        if ($companyId) {
+            $cacheKey = "dashboard_stats_company_{$companyId}";
+            $dashboardDatas = cache()->remember($cacheKey, now()->addMinutes(30), function () use ($statsService) {
+                return $statsService->dashboardTotals();
+            });
+        } else {
+            $dashboardDatas = $statsService->dashboardTotals();
         }
-        $dashboardDatas = $dashboardQuery
-            ->selectRaw("
-                COUNT(*) AS TotalOrders,
-                SUM(total) AS TotalAmount,
-                SUM(IF(status = 'ordered', total, 0)) AS TotalOrderedAmount,
-                SUM(IF(status = 'delivered', total, 0)) AS TotalDeliveredAmount,
-                SUM(IF(status = 'canceled', total, 0)) AS TotalCanceledAmount,
-                SUM(IF(status = 'ordered', 1, 0)) AS TotalOrdered,
-                SUM(IF(status = 'delivered', 1, 0)) AS TotalDelivered,
-                SUM(IF(status = 'canceled', 1, 0)) AS TotalCanceled
-            ")
-            ->first();
 
         // Monthly stats (global scope applies)
         $monthlyQuery = DB::table('orders')
@@ -126,22 +123,44 @@ class AdminController extends Controller
             ")
             ->get();
 
-        // Prepare data for charts
-        $AmountM = $monthlyDatas->pluck('TotalAmount')->implode(',');
-        $OrderedAmountM = $monthlyDatas->pluck('TotalOrderedAmount')->implode(',');
-        $DeliveredAmountM = $monthlyDatas->pluck('TotalDeliveredAmount')->implode(',');
-        $CanceledAmountM = $monthlyDatas->pluck('TotalCanceledAmount')->implode(',');
+        // Prepare data for charts - format as proper numeric arrays for JSON
+        $monthLabels = $monthlyDatas->pluck('MonthName')->toArray();
+        $AmountM = array_map('floatval', $monthlyDatas->pluck('TotalAmount')->toArray());
+        $OrderedAmountM = array_map('floatval', $monthlyDatas->pluck('TotalOrderedAmount')->toArray());
+        $DeliveredAmountM = array_map('floatval', $monthlyDatas->pluck('TotalDeliveredAmount')->toArray());
+        $CanceledAmountM = array_map('floatval', $monthlyDatas->pluck('TotalCanceledAmount')->toArray());
 
         // Totals for chart summary
-        $TotalAmount = $monthlyDatas->sum('TotalAmount');
-        $TotalOrderedAmount = $monthlyDatas->sum('TotalOrderedAmount');
-        $TotalDeliveredAmount = $monthlyDatas->sum('TotalDeliveredAmount');
-        $TotalCanceledAmount = $monthlyDatas->sum('TotalCanceledAmount');
+        // If monthly data is empty, calculate totals from dashboardDatas instead
+        if ($monthlyDatas->isEmpty()) {
+            $TotalAmount = $dashboardDatas->TotalAmount ?? 0;
+            $TotalOrderedAmount = $dashboardDatas->TotalOrderedAmount ?? 0;
+            $TotalDeliveredAmount = $dashboardDatas->TotalDeliveredAmount ?? 0;
+            $TotalCanceledAmount = $dashboardDatas->TotalCanceledAmount ?? 0;
+        } else {
+            $TotalAmount = $monthlyDatas->sum('TotalAmount');
+            $TotalOrderedAmount = $monthlyDatas->sum('TotalOrderedAmount');
+            $TotalDeliveredAmount = $monthlyDatas->sum('TotalDeliveredAmount');
+            $TotalCanceledAmount = $monthlyDatas->sum('TotalCanceledAmount');
+        }
 
-        return view('admin.dashboard', compact(
+        // additional stats (use service instance we created earlier)
+        $topProducts = $statsService->topProducts();
+        $lowStock = $statsService->lowStock();
+        $cashierRanking = $statsService->cashierRanking();
+        $salesToday = $statsService->salesToday();
+        $countToday = $statsService->countToday();
+
+        // render shared dashboard view, specifying the admin layout
+        $layout = 'layouts.admin';
+        return view('dashboard', compact(
+            'layout',
             'orders', 'dashboardDatas',
             'AmountM', 'OrderedAmountM', 'DeliveredAmountM', 'CanceledAmountM',
-            'TotalAmount', 'TotalOrderedAmount', 'TotalDeliveredAmount', 'TotalCanceledAmount'
+            'monthLabels',
+            'TotalAmount', 'TotalOrderedAmount', 'TotalDeliveredAmount', 'TotalCanceledAmount',
+            'company',
+            'topProducts','lowStock','cashierRanking','salesToday','countToday'
         ));
     }
 
@@ -404,7 +423,7 @@ public function brands()
 
         // ✅ Stock status logic moved here
         $quantity = $request->quantity ?? 0;
-        $product->quantity = max(0, $quantity); // no negatives
+        $product->stock_quantity = max(0, $quantity); // no negatives
         $product->stock_status = $quantity > 0 ? 'instock' : 'outofstock';
 
         $product->featured = $request->featured;
@@ -528,7 +547,7 @@ public function brands()
         $product->regular_price = $request->regular_price;
         $product->sale_price = $request->sale_price;
         $product->SKU = $request->SKU;
-        $product->quantity = $request->quantity;
+        $product->stock_quantity = $request->quantity;
         $product->featured = $request->featured;
 
         // Handle single image
@@ -659,9 +678,7 @@ public function brands()
     {
         $companyId = $this->currentCompanyId();
         if ($companyId) {
-            $orders = Order::whereHas('user', function($q) use ($companyId) {
-                $q->where('company_id', $companyId);
-            })->orderBy('created_at', 'DESC')->paginate(10);
+            $orders = Order::where('company_id', $companyId)->orderBy('created_at', 'DESC')->paginate(10);
         } else {
             $orders = Order::orderBy('created_at', 'DESC')->paginate(10);
         }
@@ -670,8 +687,13 @@ public function brands()
 
     public function order_details($order_id)
     {
-        // Use Eloquent with global scope - CompanyScope will automatically filter by current company
-        $order = Order::with('user')->findOrFail($order_id);
+        // Find order without global scope to handle legacy orders
+        $order = Order::withoutGlobalScopes()->with('user')->findOrFail($order_id);
+
+        $companyId = $this->currentCompanyId();
+        if ($companyId && $order->company_id && $order->company_id != $companyId) {
+            abort(404, 'Order not found');
+        }
 
         // Get order items without product relationship to avoid N+1 and null issues
         $orderItems = OrderItem::where('order_id', $order_id)->paginate(12);
@@ -697,7 +719,7 @@ public function brands()
                 $product = $item->product;
                 if ($product) {
                     // Prevent negative stock
-                    $product->quantity = max(0, $product->quantity - $item->quantity);
+                    $product->stock_quantity = max(0, $product->stock_quantity - $item->quantity);
                     $product->save();
                 }
             }
@@ -713,6 +735,12 @@ public function brands()
         }
 
         $order->save();
+
+        // ✅ Clear dashboard cache for this company
+        if ($companyId) {
+            $cacheKey = "dashboard_stats_company_{$companyId}";
+            cache()->forget($cacheKey);
+        }
 
         return back()->with("status", "Order status has been updated successfully!");
     }
@@ -831,60 +859,31 @@ public function brands()
         return redirect()->route('admin.contacts', ['subdomain' => $this->currentSubdomain()])->with('status', 'Contact has been deleted successfully!');
     }
 
-    public function posCheckout(Request $request)
-{
-    $request->validate([
-        'cart' => 'required|array',
-        'payment_method' => 'required',
-        'customer_id' => 'nullable'
-    ]);
-
-    $order = new Order();
-    $companyId = $this->currentCompanyId();
-    $order->customer_id = $request->customer_id ?? null;
-    $order->cashier_id = Auth::guard('web')->id();
-    // associate order to company via user relation check (orders table doesn't have company_id)
-    $order->payment_method = $request->payment_method;
-    $order->order_type = 'pos';
-    $order->status = 'completed';
-    $order->total = collect($request->cart)->sum(function($item){
-        return $item['price'] * $item['qty'];
-    });
-    $order->save();
-
-    foreach($request->cart as $item){
-        // ensure product belongs to this company if in tenant context
-        $product = Product::find($item['id']);
-        if ($companyId && $product && $product->company_id != $companyId) {
-            return response()->json(['message' => 'Invalid product for this company'], 403);
-        }
-
-        $order->items()->create([
-            'product_id' => $item['id'],
-            'price' => $item['price'],
-            'quantity' => $item['qty'],
-            'subtotal' => $item['price'] * $item['qty']
-        ]);
-
-        // reduce stock
-        if ($product) {
-            $product->quantity = max(0, $product->quantity - $item['qty']);
-            $product->save();
-        }
-    }
-
-    return response()->json(['message' => 'POS sale recorded successfully!']);
-}
 
 public function pos()
 {
     $companyId = $this->currentCompanyId();
     if ($companyId) {
         $products = Product::where('company_id', $companyId)->get();
+        $categories = \App\Models\Category::where('company_id', $companyId)
+            ->orderBy('name')
+            ->get();
     } else {
         $products = Product::all(); // fetch all products for global admin
+        $categories = \App\Models\Category::orderBy('name')->get();
     }
 
-    return view('admin.pos', compact('products'));
+    // choose layout based on authenticated user's role
+    $user = Auth::user();
+    $layout = 'layouts.admin';
+    if ($user) {
+        if ($user->isCashier()) {
+            $layout = 'layouts.cashier';
+        } elseif ($user->isAdmin()) {
+            $layout = 'layouts.admin';
+        }
+    }
+
+    return view('pos', compact('products', 'categories', 'layout'));
 }
 }

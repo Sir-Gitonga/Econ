@@ -19,6 +19,7 @@
 
     <div class="hero-decoration decoration-1"></div>
     <div class="hero-decoration decoration-2"></div>
+
 </section>
 
 <!-- Features Section -->
@@ -56,8 +57,56 @@
     </div>
 </section>
 
+<!-- Subscription/Plans Section -->
+<section class="plans-section" style="background: #fff; padding: 80px 0;">
+    <div class="container">
+        <h2 class="section-title" style="margin-bottom: 40px;">
+            Choose Your <span class="text-primary">Plan</span>
+        </h2>
+        <div class="plans-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 40px;">
+            <!-- Basic Plan -->
+            <div class="plan-card" style="background: #f9fafb; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); padding: 40px 30px; text-align: center;">
+                <h3 class="plan-title" style="font-size: 1.5rem; font-weight: 700; color: #1f2937; margin-bottom: 10px;">Basic</h3>
+                <div class="plan-price" style="font-size: 2.5rem; font-weight: 700; color: #02ac05; margin-bottom: 10px;">Ksh 0 <span style="font-size: 1rem; color: #6b7280; font-weight: 400;">/ 30 days</span></div>
+                <ul class="plan-features" style="list-style: none; padding: 0; margin-bottom: 24px; color: #374151;">
+                    <li>✔ 1 Company</li>
+                    <li>✔ 3 Users</li>
+                    <li>✔ Core Features</li>
+                    <li>✔ Email Support</li>
+                </ul>
+                <a href="{{ route('company.register') }}" class="hero-button" style="background: #02ac05; color: #fff;">Start Free Trial</a>
+            </div>
+            <!-- Pro Plan -->
+            <div class="plan-card" style="background: #f9fafb; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); padding: 40px 30px; text-align: center; border: 2px solid #02ac05;">
+                <h3 class="plan-title" style="font-size: 1.5rem; font-weight: 700; color: #1f2937; margin-bottom: 10px;">Pro</h3>
+                <div class="plan-price" style="font-size: 2.5rem; font-weight: 700; color: #02ac05; margin-bottom: 10px;">Ksh 2,500 <span style="font-size: 1rem; color: #6b7280; font-weight: 400;">/ month</span></div>
+                <ul class="plan-features" style="list-style: none; padding: 0; margin-bottom: 24px; color: #374151;">
+                    <li>✔ 1 Company</li>
+                    <li>✔ 10 Users</li>
+                    <li>✔ All Basic Features</li>
+                    <li>✔ Priority Support</li>
+                    <li>✔ Advanced Analytics</li>
+                </ul>
+                <a href="{{ route('company.register') }}" class="hero-button" style="background: #02ac05; color: #fff;">Start Free Trial</a>
+            </div>
+            <!-- Enterprise Plan -->
+            <div class="plan-card" style="background: #f9fafb; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); padding: 40px 30px; text-align: center;">
+                <h3 class="plan-title" style="font-size: 1.5rem; font-weight: 700; color: #1f2937; margin-bottom: 10px;">Enterprise</h3>
+                <div class="plan-price" style="font-size: 2.5rem; font-weight: 700; color: #02ac05; margin-bottom: 10px;">Ksh 7,500 <span style="font-size: 1rem; color: #6b7280; font-weight: 400;">/ month</span></div>
+                <ul class="plan-features" style="list-style: none; padding: 0; margin-bottom: 24px; color: #374151;">
+                    <li>✔ Unlimited Companies</li>
+                    <li>✔ Unlimited Users</li>
+                    <li>✔ All Pro Features</li>
+                    <li>✔ Dedicated Support</li>
+                    <li>✔ Custom Integrations</li>
+                </ul>
+                <a href="{{ route('company.register') }}" class="hero-button" style="background: #02ac05; color: #fff;">Start Free Trial</a>
+            </div>
+        </div>
+    </div>
+</section>
+
 <style>
-    /* Hero Section */
     .hero-section {
         position: relative;
         background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 50%, #14b8a6 100%);

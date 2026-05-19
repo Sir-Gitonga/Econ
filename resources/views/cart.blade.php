@@ -88,7 +88,7 @@
                         @csrf
                         @method('PUT')
                         <button type="submit" class="qty-control__increase"
-                            @if($item->qty >= $item->model->quantity) disabled @endif>
+                            @if($item->qty >= $item->model->stock_quantity) disabled @endif>
                             +
                         </button>
                     </form>
@@ -149,8 +149,7 @@
                     <td>Free</td>
                   </tr>
                   <tr>
-                    <th>VAT</th>
-                    <td>Ksh{{Cart::instance('cart')->tax()}}</td>
+
                   </tr>
                   <tr>
                     <th>Total</th>

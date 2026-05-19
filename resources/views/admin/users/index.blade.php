@@ -43,19 +43,19 @@
                             <td>{!! $user->status ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Disabled</span>' !!}</td>
                             <td>{{ $user->last_login ? $user->last_login->diffForHumans() : '-' }}</td>
                             <td>
-                                <a href="{{ adminRoute('admin.users.edit', ['subdomain' => Auth::user()->company->slug, 'user' => $user->id]) }}" class="btn btn-sm btn-primary">Edit</a>
+                                <a href="{{ adminRoute('admin.users.edit', ['user' => $user->id]) }}" class="btn btn-sm btn-primary">Edit</a>
 
-                                <form action="{{ adminRoute('admin.users.toggle_status', ['subdomain' => Auth::user()->company->slug, 'user' => $user->id]) }}" method="POST" style="display:inline">
+                                <form action="{{ adminRoute('admin.users.toggle_status', ['user' => $user->id]) }}" method="POST" style="display:inline">
                                     @csrf
                                     <button class="btn btn-sm btn-{{ $user->status ? 'warning' : 'success' }}">{{ $user->status ? 'Disable' : 'Enable' }}</button>
                                 </form>
 
-                                <form action="{{ adminRoute('admin.users.reset_password', ['subdomain' => Auth::user()->company->slug, 'user' => $user->id]) }}" method="POST" style="display:inline" onsubmit="return confirm('Reset password for {{ addslashes($user->name) }}?')">
+                                <form action="{{ adminRoute('admin.users.reset_password', ['user' => $user->id]) }}" method="POST" style="display:inline" onsubmit="return confirm('Reset password for {{ addslashes($user->name) }}?')">
                                     @csrf
                                     <button class="btn btn-sm btn-secondary">Reset Password</button>
                                 </form>
 
-                                <form action="{{ adminRoute('admin.users.destroy', ['subdomain' => Auth::user()->company->slug, 'user' => $user->id]) }}" method="POST" style="display:inline" onsubmit="return confirm('Delete this user?')">
+                                <form action="{{ adminRoute('admin.users.destroy', ['user' => $user->id]) }}" method="POST" style="display:inline" onsubmit="return confirm('Delete this user?')">
                                     @csrf
                                     @method('DELETE')
                                     <button class="btn btn-sm btn-danger">Delete</button>

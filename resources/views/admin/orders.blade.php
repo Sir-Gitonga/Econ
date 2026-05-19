@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends($layout ?? 'layouts.admin')
 @section('content')
 <div class="main-content-inner">
     <div class="main-content-wrap">
@@ -42,7 +42,7 @@
                                 <th class="text-center">Name</th>
                                 <th class="text-center">Phone</th>
                                 <th class="text-center">Subtotal</th>
-                                <th class="text-center">Tax</th>
+
                                 <th class="text-center">Total</th>
 
                                 <th class="text-center">Status</th>
@@ -58,9 +58,9 @@
                                 <td class="text-center">{{$order->id}}</td>
                                 <td class="text-center">{{$order->name}}</td>
                                 <td class="text-center">{{$order->phone}}</td>
-                                <td class="text-center">Ksh{{$order->subtotal}}</td>
-                                <td class="text-center">Ksh{{$order->tax}}</td>
-                                <td class="text-center">Ksh{{$order->total}}</td>
+                                <td class="text-center">Ksh{{ number_format($order->subtotal, 2) }}</td>
+
+                                <td class="text-center">Ksh{{ number_format($order->total, 2) }}</td>
 
                                 <td class="text-center">
                                     @if($order->status == 'delivered')
@@ -72,10 +72,10 @@
                                     @endif
                                 </td>
                                 <td class="text-center">{{$order->created_at}}</td>
-                                <td class="text-center">{{$order->orderItems->sum('quantity')}}</td>
+                                <td class="text-center">{{ $order->items_count ?? ($order->orderItems->sum('quantity') ?? 0) }}</td>
                                 <td class="text-center">{{$order->delivered_date}}</td>
                                 <td class="text-center">
-                                    <a href="{{adminRoute('admin.order.details',['order_id'=>$order->id])}}">
+                                    <a href="{{adminRoute('admin.order.details',['subdomain' => Auth::user()->company->slug, 'order_id'=>$order->id])}}">
                                         <div class="list-icon-function view-icon">
                                             <div class="item eye">
                                                 <i class="icon-eye"></i>

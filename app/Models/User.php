@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\HasCompany;
 use App\Scopes\CompanyScope;
 
@@ -32,7 +33,12 @@ class User extends Authenticatable
         'mobile',
         'password',
         'company_id',
+        'role_id',
         'role',
+        'two_factor_enabled',
+        'two_factor_phone',
+        'two_factor_code',
+        'two_factor_code_expires_at',
     ];
 
     /**
@@ -51,6 +57,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_code',
     ];
 
     /**
@@ -59,15 +66,29 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'last_login' => 'datetime',
+        'two_factor_code_expires_at' => 'datetime',
+        'two_factor_enabled' => 'boolean',
         'password' => 'hashed',
     ];
+
+    /**
+     * Get the role this user belongs to
+     */
+    public function roleModel(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id', 'id');
+    }
 
     /**
      * Check if user is a company admin.
      */
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        if ($this->roleModel) {
+            return $this->roleModel->isAdmin();
+        }
+
+        return strtolower(trim((string)$this->role ?? '')) === 'admin';
     }
 
     /**
@@ -75,14 +96,33 @@ class User extends Authenticatable
      */
     public function isCashier(): bool
     {
-        return $this->role === 'cashier';
+        if ($this->roleModel) {
+            return $this->roleModel->isCashier();
+        }
+
+        return strtolower(trim((string)$this->role ?? '')) === 'cashier';
     }
 
     /**
-     * Check if user is a normal user.
+     * Check if user is a normal user/customer.
      */
     public function isUser(): bool
     {
-        return $this->role === 'user' || is_null($this->role);
+        if ($this->roleModel) {
+            return $this->roleModel->isUser();
+        }
+
+        return strtolower(trim((string)$this->role ?? '')) !== 'admin' && strtolower(trim((string)$this->role ?? '')) !== 'cashier';
+    }
+
+    /**
+     * Get user's role name
+     */
+    public function getRoleName(): string
+    {
+        // Prefer the new relationship, but fall back to legacy `role` string column
+        $name = $this->roleModel?->name ?? $this->role ?? 'user';
+        // ensure consistent lowercase/trimmed value to avoid mismatches
+        return strtolower(trim((string) $name));
     }
 }
